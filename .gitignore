@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Build
+dist/
+build/
+*.spec
+
+# Exe
+stardance.exe
+
+# Database
+*.db
+
+# Temp test output
+d:\stay\test_*.txt
+d:\stay\exe_*.txt
+d:\stay\copy_log.txt
+d:\stay\calc_run.txt
+d:\stay\demo_run.txt
+d:\stay\dist_info.txt
+
+# IDE
+.vscode/
+.idea/

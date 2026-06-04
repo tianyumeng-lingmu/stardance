@@ -13,11 +13,12 @@ class ASTNode:
 # ─── 语句 (Statement) ───────────────────────────────────────────────
 
 class Program(ASTNode):
-    """程序根节点：包含 start块 和 main块"""
-    def __init__(self, start_block, main_block):
+    """程序根节点：包含 start块, main块, 和模块级函数声明"""
+    def __init__(self, start_block, main_block, func_decls=None):
         super().__init__(0, 0)
         self.start_block = start_block   # StartBlock | None
         self.main_block = main_block     # MainBlock | None
+        self.func_decls = func_decls or []  # list[ThingDecl] - 模块级函数
 
     def __repr__(self):
         return f"Program(start={self.start_block}, main={self.main_block})"
@@ -305,6 +306,17 @@ class GetAttr(ASTNode):
         return f"GetAttr({self.obj}.{self.attr})"
 
 
+class IndexExpr(ASTNode):
+    """下标访问: expr[idx]"""
+    def __init__(self, obj: ASTNode, index: ASTNode, line: int = 0, column: int = 0):
+        super().__init__(line, column)
+        self.obj = obj
+        self.index = index
+
+    def __repr__(self):
+        return f"IndexExpr({self.obj}[{self.index}])"
+
+
 class ListLiteral(ASTNode):
     """列表字面量: [expr, ...] 或 [key: expr, ...]
     entries: list of (key_str, value_node) tuples — key 为 None 表示索引项"""
@@ -381,3 +393,36 @@ class CutDownStmt(ASTNode):
 
     def __repr__(self):
         return "CutDownStmt()"
+
+
+class AnonymouFunc(ASTNode):
+    """匿名函数: anonymou(params) { body }"""
+    def __init__(self, params: list[str], body: list,
+                 line: int = 0, column: int = 0):
+        super().__init__(line, column)
+        self.params = params
+        self.body = body
+
+    def __repr__(self):
+        return f"AnonymouFunc(({','.join(self.params)}), {len(self.body)} stmts)"
+
+
+class NamedArgument(ASTNode):
+    """命名参数: name = value (在函数调用中使用)"""
+    def __init__(self, name: str, value: ASTNode, line: int = 0, column: int = 0):
+        super().__init__(line, column)
+        self.name = name
+        self.value = value
+
+    def __repr__(self):
+        return f"NamedArgument({self.name} = {self.value})"
+
+
+class UseStmt(ASTNode):
+    """导入包语句: use package_name;"""
+    def __init__(self, package_name: str, line: int = 0, column: int = 0):
+        super().__init__(line, column)
+        self.package_name = package_name
+
+    def __repr__(self):
+        return f"UseStmt({self.package_name})"

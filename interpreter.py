@@ -477,6 +477,15 @@ class Interpreter:
                     obj[node.target.attr] = value
                 else:
                     raise InterpreterError(f"无法为 {type(obj).__name__} 设置属性")
+            elif isinstance(node.target, IndexExpr):
+                obj = self.evaluate(node.target.obj, env)
+                idx = self.evaluate(node.target.index, env)
+                if isinstance(obj, str):
+                    raise InterpreterError("字符串不可变，不能通过下标修改")
+                if isinstance(obj, dict):
+                    obj[idx] = value
+                else:
+                    raise InterpreterError(f"无法为 {type(obj).__name__} 设置下标")
 
         elif isinstance(node, IfStmt):
             condition = self.evaluate(node.condition, env)
@@ -747,6 +756,18 @@ class Interpreter:
                 raise InterpreterError(f"字典中没有键 '{node.attr}'")
             raise InterpreterError(f"无法访问 {type(obj).__name__} 的属性 '{node.attr}'")
 
+        # 下标访问
+        if isinstance(node, IndexExpr):
+            obj = self.evaluate(node.obj, env)
+            idx = self.evaluate(node.index, env)
+            if isinstance(obj, str) and isinstance(idx, int):
+                if idx < 0 or idx >= len(obj):
+                    raise InterpreterError(f"字符串索引越界: {idx}, 长度 {len(obj)}")
+                return obj[idx]
+            if isinstance(obj, dict):
+                return obj[idx]
+            raise InterpreterError(f"不支持的下标访问: {type(obj).__name__}[{type(idx).__name__}]")
+
         # 赋值（作为表达式）
         if isinstance(node, Assign):
             value = self.evaluate(node.value, env)
@@ -758,6 +779,13 @@ class Interpreter:
                     obj.set(node.target.attr, value)
                 elif isinstance(obj, dict):
                     obj[node.target.attr] = value
+            elif isinstance(node.target, IndexExpr):
+                obj = self.evaluate(node.target.obj, env)
+                idx = self.evaluate(node.target.index, env)
+                if isinstance(obj, str):
+                    raise InterpreterError("字符串不可变，不能通过下标修改")
+                if isinstance(obj, dict):
+                    obj[idx] = value
             return value
 
         raise InterpreterError(f"无法计算的表达式: {type(node).__name__}")

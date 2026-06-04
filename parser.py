@@ -2,7 +2,17 @@
 # 递归下降解析器
 
 from tokens import TokenType
-from ast_nodes import *
+from ast_nodes import (
+    ASTNode,
+    Program, StartBlock, MainBlock, Block,
+    VarDecl, ConstDecl, Assign, SeeStmt, IfStmt, WhileStmt, ForStmt,
+    ForeachStmt, CaseStmt, WhenClause,
+    BreakStmt, ContinueStmt, CutDownStmt,
+    BinaryOp, UnaryOp, Literal, Identifier,
+    CallExpr, ExprStmt, LifeDecl, ThingDecl, ReturnStmt,
+    ListLiteral, NewExpr, GetAttr, IndexExpr, ThrowStmt, TryStmt,
+    AnonymouFunc, NamedArgument, UseStmt,
+)
 
 
 class ParseError(Exception):
@@ -53,6 +63,7 @@ class Parser:
     def parse(self) -> Program:
         start_block = None
         main_block = None
+        func_decls = []
 
         while not self.check(TokenType.EOF):
             if self.check(TokenType.START):
@@ -67,16 +78,18 @@ class Parser:
                 self.parse_life_decl()  # 顶层life暂时忽略（在start/main里注册）
             elif (self.check(TokenType.FIX) or self.check(TokenType.FINISH)) and self.peek(1) == TokenType.LIFE:
                 self.parse_life_decl()
+            elif self.check(TokenType.THING):
+                func_decls.append(self.parse_thing_decl())
             else:
                 raise self.error(f"意外的 token: {self.current().type.name} "
-                               f"(start/main/life 只能在顶层使用)")
+                               f"(start/main/life/thing 只能在顶层使用)")
 
         if start_block is None:
             start_block = StartBlock([], 0, 0)
         if main_block is None:
             main_block = MainBlock([], 0, 0)
 
-        return Program(start_block, main_block)
+        return Program(start_block, main_block, func_decls)
 
     # ─── 块解析 ────────────────────────────────────────────────────
 
@@ -153,21 +166,7 @@ class Parser:
         self.consume(TokenType.IDENTIFIER)
         name = name_tok.value
         self.consume(TokenType.LPAREN)
-        params = []
-        if not self.check(TokenType.RPAREN):
-            # 可选类型关键字
-            if self.check(TokenType.INT, TokenType.FLOAT, TokenType.STR, TokenType.BOOL,
-                          TokenType.LIST, TokenType.OBJECT):
-                self.pos += 1  # 跳过类型关键字
-            params.append(self.current().value)
-            self.consume(TokenType.IDENTIFIER)
-            while self.match(TokenType.COMMA):
-                # 可选类型关键字
-                if self.check(TokenType.INT, TokenType.FLOAT, TokenType.STR, TokenType.BOOL,
-                              TokenType.LIST, TokenType.OBJECT):
-                    self.pos += 1
-                params.append(self.current().value)
-                self.consume(TokenType.IDENTIFIER)
+        params = self._parse_param_list()
         self.consume(TokenType.RPAREN)
         self.consume(TokenType.LBRACE)
         body = []
@@ -176,13 +175,47 @@ class Parser:
         self.consume(TokenType.RBRACE)
         return ThingDecl(name, params, body, is_static, name_tok.line, name_tok.column)
 
+    def _parse_param_list(self) -> list[str]:
+        """解析参数列表，可选类型前缀: [type] name [, ...]"""
+        params = []
+        if not self.check(TokenType.RPAREN):
+            # 可选类型关键字
+            if self.check(TokenType.INT, TokenType.FLOAT, TokenType.STR, TokenType.BOOL,
+                          TokenType.LIST, TokenType.OBJECT):
+                self.pos += 1
+            params.append(self.current().value)
+            self.consume(TokenType.IDENTIFIER)
+            while self.match(TokenType.COMMA):
+                if self.check(TokenType.INT, TokenType.FLOAT, TokenType.STR, TokenType.BOOL,
+                              TokenType.LIST, TokenType.OBJECT):
+                    self.pos += 1
+                params.append(self.current().value)
+                self.consume(TokenType.IDENTIFIER)
+        return params
+
+    def parse_anonymou_func(self) -> AnonymouFunc:
+        """解析匿名函数: anonymou(params) { body }"""
+        line = self.current().line
+        col = self.current().column
+        self.consume(TokenType.ANONYMOU)
+        self.consume(TokenType.LPAREN)
+        params = self._parse_param_list()
+        self.consume(TokenType.RPAREN)
+        self.consume(TokenType.LBRACE)
+        body = []
+        while not self.check(TokenType.RBRACE) and not self.check(TokenType.EOF):
+            body.append(self.parse_statement())
+        self.consume(TokenType.RBRACE)
+        return AnonymouFunc(params, body, line, col)
+
     # ─── 语句解析 ──────────────────────────────────────────────────
 
     def parse_statement(self) -> ASTNode:
         if self.check(TokenType.LBRACE):
             return self.parse_block()
         elif self.check(TokenType.OBJECT, TokenType.INT, TokenType.FLOAT,
-                       TokenType.STR, TokenType.BOOL, TokenType.LIST):
+                       TokenType.STR, TokenType.BOOL, TokenType.LIST,
+                       TokenType.VAR):
             return self.parse_var_decl()
         elif self.check(TokenType.IF):
             return self.parse_if_stmt()
@@ -208,6 +241,8 @@ class Parser:
             return self.parse_throw_stmt()
         elif self.check(TokenType.TRY):
             return self.parse_try_stmt()
+        elif self.check(TokenType.USE):
+            return self.parse_use_stmt()
         else:
             return self.parse_expr_stmt()
 
@@ -235,6 +270,8 @@ class Parser:
             var_type = 'bool'; self.pos += 1
         elif self.check(TokenType.LIST):
             var_type = 'list'; self.pos += 1
+        elif self.check(TokenType.VAR):
+            var_type = None; self.pos += 1
         else:
             self.match(TokenType.OBJECT)
         name_tok = self.current()
@@ -401,6 +438,16 @@ class Parser:
         self.consume(TokenType.SEMICOLON)
         return SeeStmt(args, line, col)
 
+    def parse_use_stmt(self) -> UseStmt:
+        """解析包导入语句: use package_name;"""
+        line = self.current().line
+        col = self.current().column
+        self.consume(TokenType.USE)
+        name_tok = self.current()
+        self.consume(TokenType.IDENTIFIER)
+        self.consume(TokenType.SEMICOLON)
+        return UseStmt(name_tok.value, line, col)
+
     def parse_throw_stmt(self) -> ThrowStmt:
         """解析抛出异常: throw expr;"""
         line = self.current().line
@@ -485,7 +532,7 @@ class Parser:
             value = self.parse_assignment()
             if isinstance(expr, Identifier):
                 return Assign(Identifier(expr.name), value, line, col)
-            elif isinstance(expr, GetAttr):
+            elif isinstance(expr, (GetAttr, IndexExpr)):
                 return Assign(expr, value, line, col)
             else:
                 raise ParseError(f"[语法错误] 第{line}行: 无效的赋值目标")
@@ -649,6 +696,10 @@ class Parser:
             expr = Identifier(name, kw.line, kw.column)
             expr = self._parse_chain(expr)
             return expr
+        if self.check(TokenType.ANONYMOU):
+            expr = self.parse_anonymou_func()
+            expr = self._parse_chain(expr)
+            return expr
         if self.check(TokenType.IDENTIFIER):
             self.pos += 1
             expr = Identifier(tok.value, tok.line, tok.column)
@@ -694,16 +745,28 @@ class Parser:
         return ListLiteral(entries, has_keys, line, col)
 
     def _parse_chain(self, expr: ASTNode) -> ASTNode:
-        while self.check(TokenType.DOT):
-            dot_tok = self.current()
-            self.pos += 1
-            attr_tok = self.current()
-            self.consume(TokenType.IDENTIFIER)
-            expr = GetAttr(expr, attr_tok.value, dot_tok.line, dot_tok.column)
-            if self.check(TokenType.LPAREN):
+        while True:
+            if self.check(TokenType.DOT):
+                dot_tok = self.current()
+                self.pos += 1
+                attr_tok = self.current()
+                self.consume(TokenType.IDENTIFIER)
+                expr = GetAttr(expr, attr_tok.value, dot_tok.line, dot_tok.column)
+                if self.check(TokenType.LPAREN):
+                    expr = self.finish_call(expr)
+            elif self.check(TokenType.LBRACKET):
+                self.pos += 1  # consume [
+                line = self.current().line
+                col = self.current().column
+                idx_expr = self.parse_expression()
+                self.consume(TokenType.RBRACKET)
+                expr = IndexExpr(expr, idx_expr, line, col)
+                if self.check(TokenType.LPAREN):
+                    expr = self.finish_call(expr)
+            elif self.check(TokenType.LPAREN):
                 expr = self.finish_call(expr)
-        if self.check(TokenType.LPAREN):
-            expr = self.finish_call(expr)
+            else:
+                break
         return expr
 
     def finish_call(self, callee: ASTNode) -> CallExpr:
@@ -713,12 +776,31 @@ class Parser:
         return CallExpr(callee, args, line, col)
 
     def parse_call_args(self) -> list:
-        """解析调用参数列表 (arg1, arg2, ...)"""
+        """解析调用参数列表 (arg1, arg2, ..., name=value, ...)"""
         self.consume(TokenType.LPAREN)
         args = []
         if not self.check(TokenType.RPAREN):
-            args.append(self.parse_expression())
-            while self.match(TokenType.COMMA):
+            # 检测是否为命名参数: 标识符 = 表达式
+            if (self.check(TokenType.IDENTIFIER)
+                    and self.peek(1) == TokenType.ASSIGN):
+                name_tok = self.current()
+                self.pos += 1  # 消耗标识符
+                self.consume(TokenType.ASSIGN)
+                value = self.parse_expression()
+                args.append(NamedArgument(name_tok.value, value,
+                                          name_tok.line, name_tok.column))
+            else:
                 args.append(self.parse_expression())
+            while self.match(TokenType.COMMA):
+                if (self.check(TokenType.IDENTIFIER)
+                        and self.peek(1) == TokenType.ASSIGN):
+                    name_tok = self.current()
+                    self.pos += 1
+                    self.consume(TokenType.ASSIGN)
+                    value = self.parse_expression()
+                    args.append(NamedArgument(name_tok.value, value,
+                                              name_tok.line, name_tok.column))
+                else:
+                    args.append(self.parse_expression())
         self.consume(TokenType.RPAREN)
         return args

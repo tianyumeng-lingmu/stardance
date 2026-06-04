@@ -377,6 +377,29 @@ list items = [10, 20, 30];
 len(items);                 // 获取长度
 ```
 
+### 9.5 字典下标访问 `obj["key"]` 和 `obj[int]`
+
+字典风格的列表支持字符串和整数下标两种访问方式：
+
+```
+object scores = [
+    "小明": 95,
+    "小红": 88,
+];
+see(scores["小明"]);       // 95  ← 字符串下标
+see(scores["小红"]);       // 88
+
+// 支持赋值
+scores["小明"] = 100;
+
+// 也支持整数下标（用于 str_split 等返回的结果）
+object parts = str_split("a,b,c", ",");
+see(parts[0]);               // "a"  ← 整数下标
+see(parts["0"]);             // "a"  ← 字符串下标（等价）
+```
+
+> **注意：** 字符串索引 `s[0]` 用于获取字符串的第 0 个字符。
+
 ---
 
 ## 10. 面向对象
@@ -633,37 +656,63 @@ str id1 = ID(42);       // "<ID:0x...>"
 str id2 = ID(obj);      // "<ID:0x...>"
 ```
 
-### 12.4 类型转换错误处理
+### 12.4 JSON / 文件 I/O
 
-`int()` / `float()` 在遇到非法转换时会抛出异常，可用 `try-catch` 捕获：
+| 函数 | 说明 | 示例 |
+|------|------|------|
+| `json_encode(obj)` | 将对象编码为 JSON 字符串 | `json_encode(['a':1])` → `{"a":1}` |
+| `json_decode(str)` | 将 JSON 字符串解码为对象 | `json_decode('{"a":1}')` |
+| `file_read(path)` | 读取文件内容 | `str content = file_read("data.json")` |
+| `file_write(path, content)` | 写入文件 | `file_write("out.txt", "hello")` |
+| `file_exists(path)` | 检查文件是否存在 | `file_exists("test.txt")` → `true` |
 
+**示例：读取 JSON 配置文件**
 ```
-try {
-    int bad = int("abc");
-} catch (e) {
-    see("转换失败: ", e.message, "\n");
-}
-```
-
----
-
-## 13. 数据库操作
-
-内置 SQLite 数据库支持：
-
-```
-// 创建表
-db_create("users", "id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, age INTEGER");
-
-// 插入数据
-db_execute("INSERT INTO users (name, age) VALUES ('小明', 18)");
-
-// 查询数据
-object result = db_query("SELECT * FROM users");
-see(result);
+str data = file_read("config.json");
+object cfg = json_decode(data);
+see(cfg["host"], cfg["port"]);
 ```
 
-> 数据库文件自动保存为 `<脚本名>.db`。
+### 12.5 字符串函数
+
+| 函数 | 说明 | 示例 |
+|------|------|------|
+| `str_at(s, idx)` | 取第 idx 个字符 | `str_at("Hello", 1)` → `"e"` |
+| `str_sub(s, start, end)` | 取子串 `[start, end)` | `str_sub("Hello", 1, 4)` → `"ell"` |
+| `str_find(s, pattern)` | 查找子串位置 | `str_find("Hello", "ll")` → `2` |
+| `str_contains(s, pattern)` | 是否包含子串 | `str_contains("Hello", "ll")` → `true` |
+| `str_trim(s)` | 去除两端空白 | `str_trim("  hi  ")` → `"hi"` |
+| `str_upper(s)` | 转大写 | `str_upper("hello")` → `"HELLO"` |
+| `str_lower(s)` | 转小写 | `str_lower("HELLO")` → `"hello"` |
+| `str_split(s, delimiter)` | 按分隔符分割 | `str_split("a,b,c", ",")` → 对象 `{"0":"a","1":"b","2":"c"}` |
+
+**字符串索引（从 0 开始）：**
+```
+str s = "Hello";
+see(s[0]);          // "H"
+see(s[4]);          // "o"
+```
+
+**str_split 解析输入行：**
+```
+str line = insert("");
+object fields = str_split(line, " ");
+str cmd = fields[0];    // 第一个字段
+str arg = fields[1];    // 第二个字段
+```
+
+### 12.6 对象下标 `obj[int]`
+
+对象除了支持字符串键 `obj["key"]`，还支持 **整数下标** `obj[int]`：
+
+```
+object parts = str_split("a,b,c", ",");
+see(parts[0]);            // "a"  ← 整数下标
+see(parts["0"]);          // "a"  ← 字符串下标（等价）
+parts[1] = "z";           // 整数下标赋值
+```
+
+这对于 `str_split` 返回的结果非常方便——可以直接用数字索引 `fields[0]`、`fields[1]` 来访问。
 
 ---
 

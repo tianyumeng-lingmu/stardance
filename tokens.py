@@ -46,6 +46,8 @@ class TokenType(Enum):
     TRY = auto()        # try (异常捕获)
     CATCH = auto()      # catch (捕获异常)
     FINALLY = auto()    # finally (最终执行)
+    ANONYMOU = auto()   # anonymou (匿名函数)
+    USE = auto()        # use (导入包)
 
     # 符号
     LBRACE = auto()     # {
@@ -146,4 +148,6 @@ KEYWORDS = {
     'try': TokenType.TRY,
     'catch': TokenType.CATCH,
     'finally': TokenType.FINALLY,
+    'anonymou': TokenType.ANONYMOU,
+    'use': TokenType.USE,
 }

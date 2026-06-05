@@ -1,6 +1,6 @@
 # 群星之舞 编程语言学习指南
 
-> 版本：v0.6 | 文件后缀：`.star`
+> 版本：v2.0 | 文件后缀：`.star`
 
 ---
 
@@ -15,12 +15,14 @@
 7. [循环](#7-循环)
 8. [跳转语句](#8-跳转语句)
 9. [列表与字典](#9-列表与字典)
-10. [面向对象](#10-面向对象)
-11. [异常处理](#11-异常处理)
-12. [内置函数](#12-内置函数)
-13. [数据库操作](#13-数据库操作)
-14. [常量与修饰符](#14-常量与修饰符)
-15. [附录：运算符优先级](#15-附录运算符优先级)
+10. [函数声明](#10-函数声明)
+11. [面向对象（life 命途）](#11-面向对象life-命途)
+12. [异常处理](#12-异常处理)
+13. [内置函数](#13-内置函数)
+14. [包系统（Package）](#14-包系统package)
+15. [FFI（外部函数接口）](#15-ffi外部函数接口)
+16. [常量与修饰符](#16-常量与修饰符)
+17. [附录：运算符优先级](#17-附录运算符优先级)
 
 ---
 
@@ -28,7 +30,9 @@
 
 ```
 main {
-    see("你好，世界！\n");
+    thing main() {
+        see("你好，世界！\n");
+    }
 }
 ```
 
@@ -58,37 +62,43 @@ see("答案 = ", 42, "\n");
 
 一个 `.star` 文件由 **两个可选块** 组成：
 
-### 3.1 `start{}` 块 — 配置与常量声明
+### 3.1 `start{}` 块 — 配置与包导入
 
-程序启动时执行，用于声明常量和初始化配置：
+程序启动时执行，用于导入包和声明常量：
 
 ```
 start {
+    use system;
+    use rand;
     float PI = 3.1415926;
     str APP_NAME = "群星之舞";
-    int MAX_COUNT = 100;
 }
 ```
 
-### 3.2 `main{}` 块 — 主程序逻辑
+### 3.2 `main{}` 块 — 主程序（main 命途）
 
-程序的入口逻辑：
+`main{}` 是程序的入口容器，内部必须包含 `thing main()` 作为实际主程序入口：
 
 ```
 main {
-    see("程序启动\n");
+    thing main() {
+        see("程序启动\n");
+    }
 }
 ```
 
-可以同时使用两个块：
+同时使用两个块：
 
 ```
 start {
-    str GREETING = "欢迎！";
+    use system;
 }
 
 main {
-    see(GREETING, "\n");   // 输出: 欢迎！
+    thing main() {
+        int pid = system.GetCurrentProcessId();
+        see("PID = ", pid, "\n");
+    }
 }
 ```
 
@@ -115,7 +125,7 @@ object x = 42;           // 任意类型
 object z = new Person;   // 对象实例
 ```
 
-> 注意：`var` 关键字不再支持，固定类型声明（`int`/`float`/`str`/`bool`/`list`/`object`）是唯一的方式。
+> 固定类型声明（`int`/`float`/`str`/`bool`/`list`/`object`）是唯一的方式，`var` 关键字已不再使用。
 
 ### 4.3 类型字面量
 
@@ -142,6 +152,8 @@ float quot = 15 / 4;   // 除法 → 3.75
 int rem = 17 % 5;      // 取模 → 2
 ```
 
+> 除法（`/`）始终返回 `float` 类型。
+
 ### 5.2 自增 / 自减
 
 ```
@@ -162,7 +174,6 @@ see(x);     // 输出 7
 |--------|------|------|
 | `==` | 相等 | `5 == 5` → `true` |
 | `!=` | 不等 | `5 != 3` → `true` |
-| `===` | 严格相等（值和类型都需相等） | `5 === 5` → `true`, `5 === "5"` → `false` |
 | `>` | 大于 | `5 > 3` → `true` |
 | `<` | 小于 | `3 < 5` → `true` |
 | `>=` | 大于等于 | `5 >= 5` → `true` |
@@ -170,7 +181,18 @@ see(x);     // 输出 7
 | `!>` | 不大于（等价于 `<=`） | `5 !> 10` → `true` |
 | `!<` | 不小于（等价于 `>=`） | `10 !< 5` → `true` |
 
-### 5.4 逻辑运算符（惰性求值）
+### 5.4 `has` 运算符
+
+`has` 用于检查字符串是否包含子串：
+
+```
+str s = "Hello World";
+if (s has "World") {
+    see("包含 World\n");
+}
+```
+
+### 5.5 逻辑运算符（惰性求值）
 
 ```
 bool r1 = true && false;    // AND → false（惰性：左边为 false 则不计算右边）
@@ -184,7 +206,7 @@ int counter = 0;
 bool r = true || (counter++ > 0);   // counter++ 不会执行，counter 仍为 0
 ```
 
-### 5.5 位运算符
+### 5.6 位运算符
 
 ```
 int a = 1 << 3;           // 左移 → 8
@@ -370,14 +392,7 @@ list scores = [
 ];
 ```
 
-### 9.4 常用操作
-
-```
-list items = [10, 20, 30];
-len(items);                 // 获取长度
-```
-
-### 9.5 字典下标访问 `obj["key"]` 和 `obj[int]`
+### 9.4 字典下标访问
 
 字典风格的列表支持字符串和整数下标两种访问方式：
 
@@ -402,9 +417,77 @@ see(parts["0"]);             // "a"  ← 字符串下标（等价）
 
 ---
 
-## 10. 面向对象
+## 10. 函数声明
 
-### 10.1 定义命途（类）
+### 10.1 `thing` 关键字
+
+所有函数使用 `thing` 关键字声明：
+
+```
+thing double(x) {
+    return x * 2;
+}
+
+thing greet(name) {
+    see("你好, ", name, "\n");
+    return 0;
+}
+```
+
+### 10.2 `return()` 要求
+
+**所有模块级 `thing` 函数必须有 `return()` 语句**，即使只返回 null：
+
+```
+// ✅ 正确
+thing calc(x) {
+    return x * 2;
+}
+
+// ✅ 正确（返回 null）
+thing doNothing() {
+    return;
+}
+
+// ❌ 编译错误 — 缺少 return()
+thing bad() {
+    int x = 1;
+    // 没有 return()！
+}
+```
+
+### 10.3 模块级函数
+
+`main` 命途外部的 `thing` 是模块级函数，可在 `main` 内部引用：
+
+```
+thing add(a, b) {
+    return a + b;
+}
+
+main {
+    thing main() {
+        int r = add(3, 4);
+        see("3 + 4 = ", r, "\n");
+    }
+}
+```
+
+### 10.4 静态函数
+
+使用 `static thing` 声明，通常用于 `life` 命途中的工厂方法：
+
+```
+static thing create(n) {
+    return new MyClass(n);
+}
+```
+
+---
+
+## 11. 面向对象（life 命途）
+
+### 11.1 定义命途（类）
 
 ```
 life Person {
@@ -435,16 +518,17 @@ life Person {
 }
 ```
 
-### 10.2 创建与使用对象
+> ⚠️ 在包含 `main{}` 的文件中，`life` 声明必须嵌套在 `main{}` 内部。没有 `main{}` 的文件（如包文件）中，`life` 可在顶级声明。
+
+### 11.2 创建与使用对象
 
 ```
 object p = new Person("小明", 18);
 p.greet();                    // 输出: 你好，我是 小明
 see(p);                       // 调用 STR → 输出: Person(小明)
-see(len(p));                  // 调用 LEN → 输出: 1
 ```
 
-### 10.3 继承
+### 11.3 继承
 
 使用 `extends` 或 `join` 关键字实现继承：
 
@@ -463,7 +547,6 @@ life Dog extends Animal {
     }
 }
 
-// join 等价于 extends
 life Cat join Animal {
     thing speak() {
         see("Cat meows\n");
@@ -471,7 +554,7 @@ life Cat join Animal {
 }
 ```
 
-### 10.4 `SUPPER` — 调用父类方法
+### 11.4 `SUPPER` — 调用父类方法
 
 ```
 life Parent {
@@ -488,53 +571,38 @@ life Child extends Parent {
 }
 ```
 
-### 10.5 `new SUPPER()` — 在子类中创建父类实例
+### 11.5 `fix` — 固定命途（冻结）
+
+`fix` 命途不可被修改，但可被继承（子类不能 `new SUPPER()`）：
 
 ```
-life Child extends Parent {
-    thing makeParent() {
-        object p = new SUPPER();
-        return 1;
-    }
+fix life FixedBase {
+    thing STR() { return "[FixedBase]"; }
 }
 ```
 
-### 10.6 多层继承链
+### 11.6 `finish` — 完成命途（禁止继承）
+
+`finish` 命途不可被任何类继承：
 
 ```
-life GrandParent {
-    thing say() { see("GrandParent\n"); }
+finish life FinalMath {
+    thing STR() { return "不可被继承"; }
 }
-life Mid extends GrandParent {
-    thing say() { SUPPER.say(); see("Mid\n"); }
-}
-life Young extends Mid {
-    thing say() { SUPPER.say(); see("Young\n"); }
-}
-```
 
-### 10.7 为 Object 添加通用方法
-
-`Object` 是所有 life 的基类，可以为其添加方法：
-
-```
-life Object {
-    thing myType() {
-        return type_of(this);
-    }
-}
+// life BadChild join FinalMath {}  // 错误！finish 命途禁止继承
 ```
 
 ---
 
-## 11. 异常处理
+## 12. 异常处理
 
-### 11.1 错误对象
+### 12.1 错误对象
 
-内置 `Error` 类，支持继承：
+内置 `Error` 类：
 
 ```
-var err = new Error;
+object err = new Error;
 err.code = "ER0001";
 err.name = "MyError";
 err.message = "出错了";
@@ -543,17 +611,17 @@ err.column = 10;
 err.suggestion = "请检查输入";
 ```
 
-### 11.2 抛出异常
+### 12.2 抛出异常
 
 ```
 throw err;
 ```
 
-### 11.3 捕获异常
+### 12.3 捕获异常
 
 ```
 try {
-    var err = new Error;
+    object err = new Error;
     err.code = "ER5001";
     err.name = "TestError";
     err.message = "测试异常";
@@ -563,100 +631,35 @@ try {
 }
 ```
 
-### 11.4 try-catch-finally
+### 12.4 try-catch-finally
 
 ```
 try {
-    // 可能出错的代码
     throw someError;
 } catch(e) {
-    // 异常处理
     see("异常: ", e, "\n");
 } finally {
-    // 无论是否有异常都会执行
     see("清理操作\n");
-}
-```
-
-### 11.5 自定义错误子类
-
-```
-life NetworkError join Error {
-    thing INIT(code, msg, url) {
-        this.code = code;
-        this.name = "NetworkError";
-        this.message = msg;
-        this.url = url;
-    }
-}
-
-try {
-    throw new NetworkError("ER10001", "连接超时", "https://api.example.com");
-} catch(e) {
-    see("错误: ", e, "\n");
-    see("URL: ", e.url, "\n");
 }
 ```
 
 ---
 
-## 12. 内置函数
+## 13. 内置函数
 
 | 函数 | 说明 | 示例 |
 |------|------|------|
 | `see(...)` | 打印输出 | `see("hello", 42, "\n")` |
 | `len(x)` | 获取长度 | `len([1,2,3])` → `3` |
-| `type_of(x)` | 获取类型名称 | `type_of(42)` → `"int"` |
-| `fix(x)` | 冻结列表为不可变 | `fix([1,2,3])` |
-| `insert(prompt)` | 获取用户输入（返回字符串） | `str s = insert("输入: ")` |
+| `insert(prompt)` | 获取用户输入 | `str s = insert("输入: ")` |
 | `int(x)` | 转换为整数 | `int("42")` → `42` |
 | `float(x)` | 转换为浮点数 | `float("3.14")` → `3.14` |
 | `str(x)` | 转换为字符串 | `str(42)` → `"42"` |
-| `bool(x)` | 转换为布尔值 | `bool(1)` → `true`, `bool(0)` → `false` |
+| `bool(x)` | 转换为布尔值 | `bool(1)` → `true` |
 | `type(x)` | 获取类型描述 | `type(42)` → `<class:int>` |
-| `ID(x)` | 获取对象唯一标识 | 返回 `<ID:0x...>` 格式 |
+| `fix(x)` | 冻结列表为不可变 | `fix([1,2,3])` |
 
-### 12.1 `insert()` — 用户输入
-
-`insert()` 现在是一个**表达式**（返回值），而不是语句：
-
-```
-main {
-    see("请输入名字: ");
-    str name = insert("");       // 返回用户输入的字符串
-    see("你好, ", name, "\n");
-
-    // 配合 int()/float() 做数字输入
-    see("请输入年龄: ");
-    int age = int(insert(""));
-    see("年龄: ", age, "\n");
-}
-```
-
-### 12.2 `type()` — 获取类型描述
-
-返回 `<class:类型名>` 格式的字符串：
-
-```
-str t1 = type(42);          // "<class:int>"
-str t2 = type("hello");     // "<class:str>"
-str t3 = type(true);        // "<class:bool>"
-
-life MyClass {}
-object obj = new MyClass();
-str t4 = type(obj);         // "<class:MyClass>"
-```
-
-### 12.3 `ID()` — 获取对象唯一标识
-
-返回每个对象的唯一内存地址标识：
-
-```
-str id1 = ID(42);       // "<ID:0x...>"
-str id2 = ID(obj);      // "<ID:0x...>"
-```
-
-### 12.4 JSON / 文件 I/O
+### 13.1 JSON / 文件 I/O
 
 | 函数 | 说明 | 示例 |
 |------|------|------|
@@ -673,18 +676,18 @@ object cfg = json_decode(data);
 see(cfg["host"], cfg["port"]);
 ```
 
-### 12.5 字符串函数
+### 13.2 字符串函数
 
 | 函数 | 说明 | 示例 |
 |------|------|------|
 | `str_at(s, idx)` | 取第 idx 个字符 | `str_at("Hello", 1)` → `"e"` |
-| `str_sub(s, start, end)` | 取子串 `[start, end)` | `str_sub("Hello", 1, 4)` → `"ell"` |
+| `str_sub(s, start, end)` | 取子串 | `str_sub("Hello", 1, 4)` → `"ell"` |
 | `str_find(s, pattern)` | 查找子串位置 | `str_find("Hello", "ll")` → `2` |
 | `str_contains(s, pattern)` | 是否包含子串 | `str_contains("Hello", "ll")` → `true` |
 | `str_trim(s)` | 去除两端空白 | `str_trim("  hi  ")` → `"hi"` |
 | `str_upper(s)` | 转大写 | `str_upper("hello")` → `"HELLO"` |
 | `str_lower(s)` | 转小写 | `str_lower("HELLO")` → `"hello"` |
-| `str_split(s, delimiter)` | 按分隔符分割 | `str_split("a,b,c", ",")` → 对象 `{"0":"a","1":"b","2":"c"}` |
+| `str_split(s, delimiter)` | 按分隔符分割 | `str_split("a,b,c", ",")` → `{"0":"a","1":"b","2":"c"}` |
 
 **字符串索引（从 0 开始）：**
 ```
@@ -693,32 +696,186 @@ see(s[0]);          // "H"
 see(s[4]);          // "o"
 ```
 
-**str_split 解析输入行：**
-```
-str line = insert("");
-object fields = str_split(line, " ");
-str cmd = fields[0];    // 第一个字段
-str arg = fields[1];    // 第二个字段
-```
+---
 
-### 12.6 对象下标 `obj[int]`
+## 14. 包系统（Package）
 
-对象除了支持字符串键 `obj["key"]`，还支持 **整数下标** `obj[int]`：
+### 14.1 导入包
+
+`use` 关键字在 `start{}` 中导入包：
 
 ```
-object parts = str_split("a,b,c", ",");
-see(parts[0]);            // "a"  ← 整数下标
-see(parts["0"]);          // "a"  ← 字符串下标（等价）
-parts[1] = "z";           // 整数下标赋值
+start {
+    use system;
+    use rand;
+}
 ```
 
-这对于 `str_split` 返回的结果非常方便——可以直接用数字索引 `fields[0]`、`fields[1]` 来访问。
+### 14.2 命名空间调用
+
+包函数必须使用 `包名.函数名()` 方式调用，不会污染全局命名空间：
+
+```
+start {
+    use system;
+    use rand;
+}
+
+main {
+    thing main() {
+        int pid = system.GetCurrentProcessId();  // system 包
+        int n = rand.next();                     // rand 包
+    }
+}
+```
+
+### 14.3 system 包
+
+基于 FFI 调用 Windows API，提供系统级功能：
+
+| 函数 | 说明 |
+|------|------|
+| `system.GetTickCount64()` | 系统运行时间（毫秒） |
+| `system.GetCurrentProcessId()` | 当前进程 ID |
+| `system.GetCurrentThreadId()` | 当前线程 ID |
+| `system.GetLastError()` | 最后错误码 |
+| `system.IsDebuggerPresent()` | 调试器检测 |
+| `system.GetProcessVersion(pid)` | 进程版本 |
+| `system.SetConsoleTitle(title)` | 设置控制台标题 |
+| `system.GetStdHandle(dev)` | 获取标准句柄 |
+| `system.Sleep(ms)` | 休眠指定毫秒数 |
+| `system.Beep(freq, ms)` | 蜂鸣 |
+| `system.exit(code)` | 退出进程 |
+| `system.srandom(seed)` | 设置随机数种子 |
+| `system.random()` | 随机整数 0..32767 |
+| `system.random_range(min, max)` | 范围随机整数 |
+| `system.uptime()` | 系统运行秒数 |
+
+```
+start { use system; }
+
+main {
+    thing main() {
+        int up = system.uptime();
+        see("已运行 ", up, " 秒\n");
+        system.Sleep(1000);
+        system.exit(0);
+    }
+}
+```
+
+### 14.4 rand 包
+
+随机数生成专用包：
+
+| 函数 | 说明 |
+|------|------|
+| `rand.seed()` | 基于时间自动种子 |
+| `rand.seed_with(val)` | 自定义种子（可重复） |
+| `rand.next()` | 随机整数 0..32767 |
+| `rand.range(min, max)` | 范围随机整数 [min, max] |
+| `rand.unit()` | 0.0..1.0 随机浮点数 |
+
+```
+start { use rand; }
+
+main {
+    thing main() {
+        rand.seed();
+        int dice = rand.range(1, 6);
+        float u = rand.unit();
+        see("骰子: ", dice, " 随机: ", u, "\n");
+    }
+}
+```
+
+### 14.5 webstar 包
+
+HTTP 服务器包：
+
+```
+start { use webstar; }
+
+main {
+    thing main() {
+        int srv = webstar.web_start(8080);
+        int conn = webstar.web_accept(srv);
+        str line = webstar.web_read_line(conn);
+        // 处理请求...
+        str resp = webstar.web_response(200, "text/html", "<h1>OK</h1>");
+        webstar.web_send(conn, resp);
+        webstar.web_close(conn);
+        webstar.web_close(srv);
+    }
+}
+```
 
 ---
 
-## 14. 常量与修饰符
+## 15. FFI（外部函数接口）
 
-### 14.1 `start` 块常量
+StarDance 支持直接调用 DLL 中的 C 函数：
+
+### 15.1 基础用法
+
+```
+int k = ffi_load("kernel32.dll");                    // 加载 DLL
+int pid = ffi_call(k, "GetCurrentProcessId", "i");   // 调用函数（返回 int）
+ffi_call(k, "Beep", "v", 800, 200);                  // void 函数
+ffi_free(k);                                          // 释放 DLL
+```
+
+### 15.2 返回类型
+
+`ffi_call` 第三个参数指定返回类型：
+
+| 代码 | 含义 |
+|------|------|
+| `"i"` | 返回 int（32/64 位整数） |
+| `"f"` | 返回 float（double） |
+| `"v"` | void，不返回值 |
+
+### 15.3 参数列表
+
+`ffi_call` 从第 4 个参数开始都是传给 DLL 函数的参数：
+
+```
+// kernel32!GetTickCount64() — 无参数，返回 int
+int ms = ffi_call(k, "GetTickCount64", "i");
+
+// kernel32!Beep(freq: DWORD, ms: DWORD) — 两个参数，void 返回
+ffi_call(k, "Beep", "v", 800, 200);
+
+// msvcrt!rand() — 无参数，返回 int
+int m = ffi_load("msvcrt.dll");
+int r = ffi_call(m, "rand", "i");
+```
+
+### 15.4 完整示例
+
+```
+start {
+    use rand;
+}
+
+main {
+    thing main() {
+        int k = ffi_load("kernel32.dll");
+        int ms = ffi_call(k, "GetTickCount64", "i");
+        see("系统已运行 ", ms / 1000, " 秒\n");
+        ffi_free(k);
+
+        rand.seed_with(ms);
+        see("随机数: ", rand.next(), "\n");
+    }
+}
+```
+
+---
+
+## 16. 常量与修饰符
+
+### 16.1 `start` 块常量
 
 ```
 start {
@@ -729,35 +886,7 @@ start {
 
 常量在 `start{}` 中声明，全局可用，不可修改。
 
-### 14.2 `fix` — 固定命途（冻结）
-
-`fix` 命途不可被修改，但可被继承（子类不能 `new SUPPER()`）：
-
-```
-fix life FixedBase {
-    thing STR() { return "[FixedBase]"; }
-}
-
-// fix 命途可被继承
-life SubClass join FixedBase {
-    // 但不能调用 new SUPPER()
-}
-```
-
-### 14.3 `finish` — 完成命途（禁止继承）
-
-`finish` 命途不可被任何类继承：
-
-```
-finish life FinalMath {
-    thing STR() { return "不可被继承"; }
-}
-
-object fm = new FinalMath;
-// life BadChild join FinalMath {}  // 错误！finish 命途禁止继承
-```
-
-### 14.4 `fix()` 函数 — 冻结列表/字典
+### 16.2 `fix()` 函数 — 冻结列表/字典
 
 ```
 list mutable = [10, 20, 30];
@@ -766,7 +895,7 @@ object fixed = fix(mutable);    // 冻结为不可变
 
 ---
 
-## 15. 附录：运算符优先级
+## 17. 附录：运算符优先级
 
 从低到高：
 
@@ -777,13 +906,14 @@ object fixed = fix(mutable);    // 冻结为不可变
 | 3 | 逻辑 AND | `&&` | 左结合 |
 | 4 | 按位 OR | `\|` | 左结合 |
 | 5 | 按位 AND | `&` | 左结合 |
-| 6 | 相等判断 | `==` `!=` `===` | 左结合 |
+| 6 | 相等判断 | `==` `!=` | 左结合 |
 | 7 | 比较 | `<` `>` `<=` `>=` `!>` `!<` | 左结合 |
-| 8 | 移位 | `<<` `>>` `>>>` | 左结合 |
-| 9 | 加减 | `+` `-` | 左结合 |
-| 10 | 乘除取模 | `*` `/` `%` | 左结合 |
-| 11 | 一元 | `!` `-` `++x` `--x` | 右结合 |
-| 12（最高） | 后缀 | `x++` `x--` | 左结合 |
+| 8 | 包含 | `has` | 左结合 |
+| 9 | 移位 | `<<` `>>` `>>>` | 左结合 |
+| 10 | 加减 | `+` `-` | 左结合 |
+| 11 | 乘除取模 | `*` `/` `%` | 左结合 |
+| 12 | 一元 | `!` `-` `++x` `--x` | 右结合 |
+| 13（最高） | 后缀 | `x++` `x--` | 左结合 |
 
 ---
 

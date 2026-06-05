@@ -114,7 +114,11 @@ class Parser:
         self.consume(TokenType.LBRACE)
         stmts = []
         while not self.check(TokenType.RBRACE) and not self.check(TokenType.EOF):
-            if self.check(TokenType.LIFE):
+            if self.check(TokenType.THING):
+                stmts.append(self.parse_thing_decl())
+            elif self.check(TokenType.STATIC):
+                stmts.append(self.parse_thing_decl(is_static=True))
+            elif self.check(TokenType.LIFE):
                 stmts.append(self.parse_life_decl())
             elif (self.check(TokenType.FIX) or self.check(TokenType.FINISH)) and self.peek(1) == TokenType.LIFE:
                 stmts.append(self.parse_life_decl())
@@ -163,8 +167,15 @@ class Parser:
             self.consume(TokenType.STATIC)
         self.consume(TokenType.THING)
         name_tok = self.current()
-        self.consume(TokenType.IDENTIFIER)
-        name = name_tok.value
+        # thing 声明后的名称可以是标识符或特定关键字（如 main）
+        if self.check(TokenType.IDENTIFIER):
+            self.consume(TokenType.IDENTIFIER)
+        elif self.check(TokenType.MAIN):
+            self.consume(TokenType.MAIN)
+        else:
+            self.error(f"期望函数名，但遇到 '{name_tok.value}'")
+        # 关键字 token 的 value 为 None，需从 type 名推导
+        name = name_tok.value if name_tok.value is not None else name_tok.type.name.lower()
         self.consume(TokenType.LPAREN)
         params = self._parse_param_list()
         self.consume(TokenType.RPAREN)

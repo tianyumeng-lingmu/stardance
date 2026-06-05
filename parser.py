@@ -623,7 +623,7 @@ class Parser:
 
     def parse_factor(self) -> ASTNode:
         expr = self.parse_unary()
-        while self.check(TokenType.STAR, TokenType.SLASH, TokenType.MOD):
+        while self.check(TokenType.STAR, TokenType.SLASH, TokenType.MOD, TokenType.IDIV):
             op = self.current()
             self.pos += 1
             right = self.parse_unary()
@@ -661,9 +661,9 @@ class Parser:
                 name = name_tok.value
             elif self.check(TokenType.SUPER):
                 self.consume(TokenType.SUPER)
-                name = 'SUPPER'
+                name = 'SUPER'
             else:
-                raise self.error("new 后需要命途名或 SUPPER")
+                raise self.error("new 后需要命途名或 SUPER")
             # 解析构造参数（可选：无括号时视为空参 new ClassName）
             args = []
             if self.check(TokenType.LPAREN):
@@ -688,7 +688,7 @@ class Parser:
             return expr
         if self.check(TokenType.SUPER):
             self.pos += 1
-            expr = Identifier('SUPPER', tok.line, tok.column)
+            expr = Identifier('SUPER', tok.line, tok.column)
             expr = self._parse_chain(expr)
             return expr
         if self.check(TokenType.FIX):

@@ -155,6 +155,7 @@ class Lexer:
                 '++': TokenType.INCREMENT, '--': TokenType.DECREMENT,
                 '<<': TokenType.SHL, '>>': TokenType.SHR,
                 '!>': TokenType.NGT, '!<': TokenType.NLT,
+                '/^': TokenType.IDIV,
             }
             if two_char in two_char_map:
                 self.advance()

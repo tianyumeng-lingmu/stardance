@@ -66,6 +66,7 @@ class TokenType(Enum):
     STAR = auto()       # *
     SLASH = auto()      # /
     MOD = auto()        # %
+    IDIV = auto()       # /^ (整除)
     EQ = auto()         # ==
     NEQ = auto()        # !=
     EQ_STRICT = auto()  # === (严格相等)
@@ -129,7 +130,7 @@ KEYWORDS = {
     'null': TokenType.NULL,
     'var': TokenType.VAR,
     'this': TokenType.THIS,
-    'SUPPER': TokenType.SUPER,
+    'SUPER': TokenType.SUPER,
     'extends': TokenType.EXTENDS,
     'static': TokenType.STATIC,
     'see': TokenType.SEE,

@@ -48,6 +48,7 @@ class TokenType(Enum):
     FINALLY = auto()    # finally (最终执行)
     ANONYMOU = auto()   # anonymou (匿名函数)
     USE = auto()        # use (导入包)
+    PAUSE = auto()      # pause (暂停/生成器)
 
     # 符号
     LBRACE = auto()     # {
@@ -151,4 +152,5 @@ KEYWORDS = {
     'finally': TokenType.FINALLY,
     'anonymou': TokenType.ANONYMOU,
     'use': TokenType.USE,
+    'pause': TokenType.PAUSE,
 }

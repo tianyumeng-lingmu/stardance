@@ -426,3 +426,13 @@ class UseStmt(ASTNode):
 
     def __repr__(self):
         return f"UseStmt({self.package_name})"
+
+
+class PauseStmt(ASTNode):
+    """暂停语句（生成器）: pause expr;"""
+    def __init__(self, expr: ASTNode, line: int = 0, column: int = 0):
+        super().__init__(line, column)
+        self.expr = expr
+
+    def __repr__(self):
+        return f"PauseStmt({self.expr})"

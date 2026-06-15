@@ -1,6 +1,6 @@
 # 群星之舞 编程语言学习指南
 
-> 版本：v2.0 | 文件后缀：`.star`
+> 版本：v2.3 | 文件后缀：`.star`
 
 ---
 
@@ -16,13 +16,14 @@
 8. [跳转语句](#8-跳转语句)
 9. [列表与字典](#9-列表与字典)
 10. [函数声明](#10-函数声明)
-11. [面向对象（life 命途）](#11-面向对象life-命途)
-12. [异常处理](#12-异常处理)
-13. [内置函数](#13-内置函数)
-14. [包系统（Package）](#14-包系统package)
-15. [FFI（外部函数接口）](#15-ffi外部函数接口)
-16. [常量与修饰符](#16-常量与修饰符)
-17. [附录：运算符优先级](#17-附录运算符优先级)
+11. [生成器（Generator）](#11-生成器generator)
+12. [面向对象（life 命途）](#12-面向对象life-命途)
+13. [异常处理](#13-异常处理)
+14. [内置函数](#14-内置函数)
+15. [包系统（Package）](#15-包系统package)
+16. [FFI（外部函数接口）](#16-ffi外部函数接口)
+17. [常量与修饰符](#17-常量与修饰符)
+18. [附录：运算符优先级](#18-附录运算符优先级)
 
 ---
 
@@ -434,25 +435,35 @@ thing greet(name) {
 }
 ```
 
-### 10.2 `return()` 要求
+### 10.2 `return()` / `pause` 要求
 
-**所有模块级 `thing` 函数必须有 `return()` 语句**，即使只返回 null：
+**所有模块级 `thing` 函数必须有 `return()` 或 `pause` 语句**（二选一）：
 
 ```
-// ✅ 正确
+// ✅ 正确 — 普通函数用 return
 thing calc(x) {
     return x * 2;
 }
 
-// ✅ 正确（返回 null）
+// ✅ 正确 — 返回 null
 thing doNothing() {
-    return;
+    return(null);
 }
 
-// ❌ 编译错误 — 缺少 return()
+// ✅ 正确 — 生成器函数用 pause
+thing counter(n) {
+    var i = 0;
+    while (i < n) {
+        pause i;
+        i = i + 1;
+    }
+    return(null);
+}
+
+// ❌ 编译错误 — 缺少 return() 或 pause
 thing bad() {
     int x = 1;
-    // 没有 return()！
+    // 没有 return() 也没有 pause！
 }
 ```
 
@@ -485,9 +496,80 @@ static thing create(n) {
 
 ---
 
-## 11. 面向对象（life 命途）
+## 11. 生成器（Generator）
 
-### 11.1 定义命途（类）
+使用 `pause` 关键字创建生成器函数。生成器可以暂停执行并返回一个值，下次调用时从暂停处继续。
+
+### 11.1 基本用法
+
+```
+thing counter(n) {
+    var i = 0;
+    while (i < n) {
+        pause i;        // 暂停，返回 i 的值
+        i = i + 1;
+    }
+    return(null);       // 生成器耗尽
+}
+
+main {
+    thing main() {
+        var gen = counter(5);
+        var v = next(gen);   // 0
+        see(v);
+        v = next(gen);       // 1
+        see(v);
+        v = next(gen);       // 2
+        see(v);
+        v = next(gen);       // null（已耗尽）
+        see(v);
+    }
+}
+```
+
+### 11.2 工作原理
+
+- 包含 `pause` 语句的函数自动成为**生成器函数**
+- 调用生成器函数时**不执行函数体**，而是返回一个 `generator` 对象
+- `next(gen)` 首次启动生成器，之后每次恢复至上一次 `pause` 的位置继续执行
+- 生成器耗尽（执行到 `return` 或函数末尾）后，`next()` 返回 `null`
+
+### 11.3 实现 range 生成器
+
+```
+thing myrange(from_val, to_val) {
+    var i = from_val;
+    while (i < to_val) {
+        pause i;
+        i = i + 1;
+    }
+    return(null);
+}
+
+main {
+    thing main() {
+        var gen = myrange(3, 8);
+        var v = null;
+        while ((v = next(gen)) != null) {
+            see(v, " ");
+        }
+        // 输出: 3 4 5 6 7
+    }
+}
+```
+
+### 11.4 规则
+
+- 生成器函数必须有 `pause` 语句（至少一个）
+- 生成器函数也必须有 `return()`（用于标记耗尽，通常返回 `null`）
+- `next()` 是唯一与生成器交互的方式
+- 生成器的局部变量状态在 `pause` 时自动保存和恢复
+
+---
+
+## 12. 面向对象（life 命途）
+
+### 12.1 定义命途（类）
 
 ```
 life Person {
@@ -520,7 +602,7 @@ life Person {
 
 > ⚠️ 在包含 `main{}` 的文件中，`life` 声明必须嵌套在 `main{}` 内部。没有 `main{}` 的文件（如包文件）中，`life` 可在顶级声明。
 
-### 11.2 创建与使用对象
+### 12.2 创建与使用对象
 
 ```
 object p = new Person("小明", 18);
@@ -528,7 +610,7 @@ p.greet();                    // 输出: 你好，我是 小明
 see(p);                       // 调用 STR → 输出: Person(小明)
 ```
 
-### 11.3 继承
+### 12.3 继承
 
 使用 `extends` 或 `join` 关键字实现继承：
 
@@ -554,7 +636,7 @@ life Cat join Animal {
 }
 ```
 
-### 11.4 `SUPPER` — 调用父类方法
+### 12.4 `SUPER` — 调用父类方法
 
 ```
 life Parent {
@@ -565,15 +647,15 @@ life Parent {
 
 life Child extends Parent {
     thing greet() {
-        SUPPER.greet();         // 调用父类方法
+        SUPER.greet();         // 调用父类方法
         see("Child::greet()\n");
     }
 }
 ```
 
-### 11.5 `fix` — 固定命途（冻结）
+### 12.5 `fix` — 固定命途（冻结）
 
-`fix` 命途不可被修改，但可被继承（子类不能 `new SUPPER()`）：
+`fix` 命途不可被修改，但可被继承（子类不能 `new SUPER()`）：
 
 ```
 fix life FixedBase {
@@ -581,7 +663,7 @@ fix life FixedBase {
 }
 ```
 
-### 11.6 `finish` — 完成命途（禁止继承）
+### 12.6 `finish` — 完成命途（禁止继承）
 
 `finish` 命途不可被任何类继承：
 
@@ -595,9 +677,9 @@ finish life FinalMath {
 
 ---
 
-## 12. 异常处理
+## 13. 异常处理
 
-### 12.1 错误对象
+### 13.1 错误对象
 
 内置 `Error` 类：
 
@@ -611,13 +693,13 @@ err.column = 10;
 err.suggestion = "请检查输入";
 ```
 
-### 12.2 抛出异常
+### 13.2 抛出异常
 
 ```
 throw err;
 ```
 
-### 12.3 捕获异常
+### 13.3 捕获异常
 
 ```
 try {
@@ -631,7 +713,7 @@ try {
 }
 ```
 
-### 12.4 try-catch-finally
+### 13.4 try-catch-finally
 
 ```
 try {
@@ -645,7 +727,7 @@ try {
 
 ---
 
-## 13. 内置函数
+## 14. 内置函数
 
 | 函数 | 说明 | 示例 |
 |------|------|------|
@@ -658,8 +740,9 @@ try {
 | `bool(x)` | 转换为布尔值 | `bool(1)` → `true` |
 | `type(x)` | 获取类型描述 | `type(42)` → `<class:int>` |
 | `fix(x)` | 冻结列表为不可变 | `fix([1,2,3])` |
+| `next(gen)` | 获取生成器下一个值 | `next(gen)` → 值 或 `null` |
 
-### 13.1 JSON / 文件 I/O
+### 14.1 JSON / 文件 I/O
 
 | 函数 | 说明 | 示例 |
 |------|------|------|
@@ -676,7 +759,7 @@ object cfg = json_decode(data);
 see(cfg["host"], cfg["port"]);
 ```
 
-### 13.2 字符串函数
+### 14.2 字符串函数
 
 | 函数 | 说明 | 示例 |
 |------|------|------|
@@ -698,9 +781,9 @@ see(s[4]);          // "o"
 
 ---
 
-## 14. 包系统（Package）
+## 15. 包系统（Package）
 
-### 14.1 导入包
+### 15.1 导入包
 
 `use` 关键字在 `start{}` 中导入包：
 
@@ -711,7 +794,7 @@ start {
 }
 ```
 
-### 14.2 命名空间调用
+### 15.2 命名空间调用
 
 包函数必须使用 `包名.函数名()` 方式调用，不会污染全局命名空间：
 
@@ -729,7 +812,7 @@ main {
 }
 ```
 
-### 14.3 system 包
+### 15.3 system 包
 
 基于 FFI 调用 Windows API，提供系统级功能：
 
@@ -764,7 +847,7 @@ main {
 }
 ```
 
-### 14.4 rand 包
+### 15.4 rand 包
 
 随机数生成专用包：
 
@@ -789,7 +872,7 @@ main {
 }
 ```
 
-### 14.5 webstar 包
+### 15.5 webstar 包
 
 HTTP 服务器包：
 
@@ -812,11 +895,11 @@ main {
 
 ---
 
-## 15. FFI（外部函数接口）
+## 16. FFI（外部函数接口）
 
 StarDance 支持直接调用 DLL 中的 C 函数：
 
-### 15.1 基础用法
+### 16.1 基础用法
 
 ```
 int k = ffi_load("kernel32.dll");                    // 加载 DLL
@@ -825,7 +908,7 @@ ffi_call(k, "Beep", "v", 800, 200);                  // void 函数
 ffi_free(k);                                          // 释放 DLL
 ```
 
-### 15.2 返回类型
+### 16.2 返回类型
 
 `ffi_call` 第三个参数指定返回类型：
 
@@ -835,7 +918,7 @@ ffi_free(k);                                          // 释放 DLL
 | `"f"` | 返回 float（double） |
 | `"v"` | void，不返回值 |
 
-### 15.3 参数列表
+### 16.3 参数列表
 
 `ffi_call` 从第 4 个参数开始都是传给 DLL 函数的参数：
 
@@ -851,7 +934,7 @@ int m = ffi_load("msvcrt.dll");
 int r = ffi_call(m, "rand", "i");
 ```
 
-### 15.4 完整示例
+### 16.4 完整示例
 
 ```
 start {
@@ -873,9 +956,9 @@ main {
 
 ---
 
-## 16. 常量与修饰符
+## 17. 常量与修饰符
 
-### 16.1 `start` 块常量
+### 17.1 `start` 块常量
 
 ```
 start {
@@ -886,7 +969,7 @@ start {
 
 常量在 `start{}` 中声明，全局可用，不可修改。
 
-### 16.2 `fix()` 函数 — 冻结列表/字典
+### 17.2 `fix()` 函数 — 冻结列表/字典
 
 ```
 list mutable = [10, 20, 30];
@@ -895,7 +978,7 @@ object fixed = fix(mutable);    // 冻结为不可变
 
 ---
 
-## 17. 附录：运算符优先级
+## 18. 附录：运算符优先级
 
 从低到高：
 

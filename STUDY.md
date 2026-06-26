@@ -790,6 +790,7 @@ try {
 | `type(x)` | 获取类型描述 | `type(42)` → `<class:int>` |
 | `fix(x)` | 冻结列表为不可变 | `fix([1,2,3])` |
 | `next(gen)` | 获取生成器下一个值 | `next(gen)` → 值 或 `null` |
+| `todo(msg?)` | 未实现警告（W18） | `todo("后续实现")` → 输出到 stderr |
 
 ### 14.1 JSON / 文件 I/O
 

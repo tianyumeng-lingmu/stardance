@@ -7,7 +7,7 @@ from ast_nodes import (
     Program, StartBlock, MainBlock, Block,
     VarDecl, ConstDecl, Assign, SeeStmt, IfStmt, WhileStmt, ForStmt,
     ForeachStmt, CaseStmt, WhenClause,
-    BreakStmt, ContinueStmt, CutDownStmt,
+    BreakStmt, ContinueStmt, CutDownStmt, PassStmt,
     BinaryOp, UnaryOp, Literal, Identifier,
     CallExpr, ExprStmt, LifeDecl, ThingDecl, ReturnStmt, PauseStmt,
     ListLiteral, NewExpr, GetAttr, IndexExpr, ThrowStmt, TryStmt,
@@ -242,6 +242,8 @@ class Parser:
             return self.parse_return_stmt()
         elif self.check(TokenType.PAUSE):
             return self.parse_pause_stmt()
+        elif self.check(TokenType.PASS):
+            return self.parse_pass_stmt()
         elif self.check(TokenType.BREAK):
             return self.parse_break_stmt()
         elif self.check(TokenType.CONTINUE):
@@ -423,6 +425,13 @@ class Parser:
         value = self.parse_expression()
         self.consume(TokenType.SEMICOLON)
         return PauseStmt(value, line, col)
+
+    def parse_pass_stmt(self) -> PassStmt:
+        line = self.current().line
+        col = self.current().column
+        self.consume(TokenType.PASS)
+        self.consume(TokenType.SEMICOLON)
+        return PassStmt(line, col)
 
     def parse_break_stmt(self) -> BreakStmt:
         line = self.current().line

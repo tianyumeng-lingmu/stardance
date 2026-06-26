@@ -377,6 +377,15 @@ class BreakStmt(ASTNode):
         return "BreakStmt()"
 
 
+class PassStmt(ASTNode):
+    """空语句"""
+    def __init__(self, line: int = 0, column: int = 0):
+        super().__init__(line, column)
+
+    def __repr__(self):
+        return "PassStmt()"
+
+
 class ContinueStmt(ASTNode):
     """继续下一次循环"""
     def __init__(self, line: int = 0, column: int = 0):

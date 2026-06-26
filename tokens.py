@@ -49,6 +49,7 @@ class TokenType(Enum):
     ANONYMOU = auto()   # anonymou (匿名函数)
     USE = auto()        # use (导入包)
     PAUSE = auto()      # pause (暂停/生成器)
+    PASS = auto()       # pass (空语句)
 
     # 符号
     LBRACE = auto()     # {
@@ -153,4 +154,5 @@ KEYWORDS = {
     'anonymou': TokenType.ANONYMOU,
     'use': TokenType.USE,
     'pause': TokenType.PAUSE,
+    'pass': TokenType.PASS,
 }

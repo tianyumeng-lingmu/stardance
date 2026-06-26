@@ -1,6 +1,6 @@
 # 群星之舞 编程语言学习指南
 
-> 版本：v2.3 | 文件后缀：`.star`
+> 版本：v2.4 | 文件后缀：`.star`
 
 ---
 
@@ -18,6 +18,7 @@
 10. [函数声明](#10-函数声明)
 11. [生成器（Generator）](#11-生成器generator)
 12. [面向对象（life 命途）](#12-面向对象life-命途)
+    - [抽象命途](#127-抽象命途)
 13. [异常处理](#13-异常处理)
 14. [内置函数](#14-内置函数)
 15. [包系统（Package）](#15-包系统package)
@@ -675,6 +676,50 @@ finish life FinalMath {
 
 // life BadChild join FinalMath {}  // 错误！finish 命途禁止继承
 ```
+
+### 12.7 抽象命途
+
+当命途中的所有 `thing` 方法体均为 `pass` 时，该命途视为**抽象命途**。抽象命途不能被实例化：
+
+```
+life Animal {
+    thing speak() { pass; }     // 抽象方法
+    thing walk()  { pass; }     // 抽象方法
+}
+
+// object a = new Animal();     // 错误 18：无法实例化抽象命途
+```
+
+继承抽象命途的子类必须实现所有抽象方法，否则 `new` 也会报错误 18：
+
+```
+life Dog join Animal {
+    thing speak() {
+        see("bark\n");           // 实现 speak
+    }
+    thing walk() { pass; }      // 仍可为 pass，继续留给子类
+}
+
+life Puppy join Dog {
+    thing walk() {
+        see("walk\n");           // 实现 walk
+    }
+}
+
+main {
+    thing main() {
+        object p = new Puppy("Buddy");  // OK：所有抽象方法已实现
+        p.speak();              // bark
+        p.walk();               // walk
+    }
+}
+```
+
+规则：
+- 不需要 `abstract` 关键字，全 `pass` 方法体自动判定
+- 抽象命途不能 `new`
+- 子类未实现全部抽象方法也不能 `new`
+- 错误码：**18**
 
 ---
 
